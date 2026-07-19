@@ -1,0 +1,1697 @@
+{% extends "chat/base.html" %}
+{% load static %}
+
+{% block title %}AskDB — Chat{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ─── Side-by-Side Data & Chart Layout ────────────────────────────────────── */
+    .data-side-by-side {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 20px !important;
+        margin-top: 16px !important;
+        align-items: stretch !important;
+        width: 100% !important;
+    }
+
+    .data-side-left {
+        flex: 1 !important;
+        min-width: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .side-by-side-header {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        padding: 10px 16px !important;
+        font-size: 0.8rem !important;
+        font-weight: 600 !important;
+        color: var(--text-secondary) !important;
+        background: var(--bg-surface) !important;
+        border: 1px solid var(--border) !important;
+        border-bottom: none !important;
+        border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
+        letter-spacing: 0.3px !important;
+    }
+
+    .side-by-side-header svg {
+        color: var(--accent-start) !important;
+    }
+
+    .data-side-left .data-table-container {
+        margin-top: 0 !important;
+        border-top-left-radius: 0 !important;
+        border-top-right-radius: 0 !important;
+        flex: 1 !important;
+    }
+
+    .data-side-right {
+        flex: 1.1 !important;
+        min-width: 320px !important;
+        max-width: 520px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: var(--bg-surface) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius-md) !important;
+        padding: 10px !important;
+    }
+
+    .message-chart {
+        width: 100% !important;
+    }
+
+    .message-chart img {
+        width: 100% !important;
+        height: auto !important;
+        border-radius: var(--radius-sm) !important;
+        display: block !important;
+    }
+
+    .solo-chart {
+        margin-top: 16px !important;
+        max-width: 480px !important;
+        background: var(--bg-surface) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius-md) !important;
+        padding: 16px !important;
+    }
+
+    .data-side-left .data-table td,
+    .data-side-left .data-table th {
+        padding: 8px 12px !important;
+        font-size: 0.78rem !important;
+    }
+
+    @media (max-width: 850px) {
+        .data-side-by-side {
+            flex-direction: column !important;
+        }
+
+        .data-side-right {
+            max-width: 100% !important;
+            width: 100% !important;
+        }
+    }
+
+    .block-analysis-text {
+        margin-top: 14px !important;
+        padding: 12px 16px !important;
+        background: rgba(124, 58, 237, 0.05) !important;
+        border-left: 3px solid var(--accent-start, #7c3aed) !important;
+        border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;
+        font-size: 0.88rem !important;
+        line-height: 1.5 !important;
+        color: var(--text-primary) !important;
+    }
+
+    /* ─── Executive Summary & PDF Styles ──────────────────────────────────────── */
+    .message-assistant h3 {
+        margin-top: 22px !important;
+        font-size: 0.98rem !important;
+        font-weight: 600 !important;
+        color: #a855f7 !important;
+        /* purple accent to match dashboard gradient */
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+
+    .message-assistant h3::before {
+        content: "📝" !important;
+        font-size: 1rem !important;
+    }
+
+    .executive-summary-card {
+        background: rgba(168, 85, 247, 0.06) !important;
+        border-left: 3px solid #a855f7 !important;
+        border-radius: var(--radius-sm, 6px) !important;
+        padding: 16px 20px !important;
+        margin: 10px 0 20px 0 !important;
+    }
+
+    .executive-summary-card ul {
+        margin: 0 !important;
+        padding-left: 20px !important;
+        list-style-type: disc !important;
+    }
+
+    .executive-summary-card ul + ul {
+        margin-top: 8px !important;
+    }
+
+    .executive-summary-card li {
+        margin-bottom: 8px !important;
+        font-size: 0.88rem !important;
+        line-height: 1.6 !important;
+        color: var(--text-primary) !important;
+    }
+
+    .executive-summary-card ul:last-child li:last-child {
+        margin-bottom: 0 !important;
+    }
+
+    .btn-pdf-export {
+        background: transparent !important;
+        border: 1px solid var(--border) !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .btn-pdf-export:hover {
+        background: rgba(168, 85, 247, 0.12) !important;
+        border-color: #a855f7 !important;
+        color: #a855f7 !important;
+    }
+
+    .security-warning {
+        color: #f87171 !important;
+        border-bottom: 1px solid rgba(248, 113, 113, 0.2) !important;
+    }
+
+    .security-message {
+        background: rgba(248, 113, 113, 0.05) !important;
+        border-left: 3px solid #ef4444 !important;
+        color: #fca5a5 !important;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="app-layout" id="app-layout">
+    <!-- ─── Sidebar ──────────────────────────────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <rect x="3" y="3" width="18" height="18" rx="4" stroke="currentColor" stroke-width="2" />
+                        <path d="M8 12h8M12 8v8" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                    </svg>
+                </div>
+                <span class="logo-text">AskDB</span>
+            </div>
+            <a href="{% url 'chat:new_conversation' %}" class="btn-icon" id="new-chat-btn" title="New Chat">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+                </svg>
+            </a>
+        </div>
+
+        <nav class="sidebar-nav" id="conversation-list">
+            {% for conv in conversations %}
+            <a href="{% url 'chat:chat_with_id' conv.id %}"
+                class="nav-item {% if conv.id == conversation.id %}active{% endif %}" title="{{ conv.title }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                </svg>
+                <span class="nav-item-text">{{ conv.title|truncatechars:30 }}</span>
+            </a>
+            {% empty %}
+            <div class="nav-empty">No conversations yet</div>
+            {% endfor %}
+        </nav>
+
+        <div class="sidebar-footer">
+            <a href="{% url 'chat:history' %}" class="nav-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                </svg>
+                <span>View History</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- ─── Main Chat Area ───────────────────────────────────────────── -->
+    <main class="chat-main">
+        <header class="chat-header">
+            <button class="btn-icon sidebar-toggle" id="sidebar-toggle">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+            </button>
+            <h1 class="chat-title" id="chat-title">{{ conversation.title|truncatechars:50 }}</h1>
+            <div class="header-badge">
+                <span class="badge">GPT-4o Mini</span>
+            </div>
+        </header>
+
+        <div class="messages-container" id="messages-container">
+            <div class="messages-inner" id="messages">
+                {% if not messages %}
+                <!-- Welcome screen -->
+                <div class="welcome" id="welcome-screen">
+                    <div class="welcome-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                            <rect x="3" y="3" width="18" height="18" rx="4" stroke="url(#grad1)" stroke-width="2" />
+                            <path d="M8 12h8M12 8v8" stroke="url(#grad1)" stroke-width="2" stroke-linecap="round" />
+                            <defs>
+                                <linearGradient id="grad1" x1="3" y1="3" x2="21" y2="21">
+                                    <stop offset="0%" stop-color="#6366f1" />
+                                    <stop offset="100%" stop-color="#a855f7" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
+                    <h2>Ask your database anything</h2>
+                    <p class="welcome-sub">Type a question in plain English and get instant insights with charts.</p>
+                    <div class="suggestions">
+                        <button class="suggestion-chip" onclick="askSuggestion(this)">
+                            <span class="chip-icon">📊</span>
+                            Which city had the most orders?
+                        </button>
+                        <button class="suggestion-chip" onclick="askSuggestion(this)">
+                            <span class="chip-icon">💰</span>
+                            What is the total revenue this year?
+                        </button>
+                        <button class="suggestion-chip" onclick="askSuggestion(this)">
+                            <span class="chip-icon">🏆</span>
+                            Top 5 best selling products
+                        </button>
+                        <button class="suggestion-chip" onclick="askSuggestion(this)">
+                            <span class="chip-icon">📈</span>
+                            Monthly revenue trend
+                        </button>
+                    </div>
+                </div>
+                {% else %}
+                {% for msg in messages %}
+                <div class="message message-{{ msg.role }}" {% if msg.role == "assistant" %}
+                    data-chart-url="{{ msg.chart_url }}"
+                    data-sql="{% if msg.query_log %}{{ msg.query_log.generated_sql }}{% endif %}"
+                    data-execution-ms="{% if msg.query_log %}{{ msg.query_log.execution_ms }}{% endif %}"
+                    data-row-count="{% if msg.query_log %}{{ msg.query_log.rows_returned }}{% endif %}" {% endif %}>
+                    <div class="message-avatar">
+                        {% if msg.role == "user" %}
+                        <div class="avatar avatar-user">U</div>
+                        {% else %}
+                        <div class="avatar avatar-ai">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                <rect x="3" y="3" width="18" height="18" rx="4" stroke="currentColor"
+                                    stroke-width="2" />
+                                <path d="M8 12h8M12 8v8" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" />
+                            </svg>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="message-content">
+                        {% if msg.role == "assistant" %}
+                            {% if msg.details_json %}
+                                <script type="application/json" class="message-results-data">{{ msg.details_json_str|safe }}</script>
+                            {% endif %}
+                        {% endif %}
+                        <div class="message-text">{{ msg.text }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ─── Input Area ───────────────────────────────────────────── -->
+        <div class="input-area">
+            <form id="chat-form" class="input-form">
+                <div class="input-wrapper">
+                    <textarea id="question-input" placeholder="Ask anything about your data..." rows="1"
+                        autofocus></textarea>
+                    <button type="submit" class="send-btn" id="send-btn" title="Send">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="input-hint">
+                    AskDB can make mistakes. Always verify important queries.
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const CONVERSATION_ID = "{{ conversation.id }}";
+    const ASK_URL = "{% url 'chat:ask' %}";
+    const CSRF_TOKEN = "{{ csrf_token }}";
+
+    const messagesContainer = document.getElementById('messages-container');
+    const messagesInner = document.getElementById('messages');
+    const form = document.getElementById('chat-form');
+    const input = document.getElementById('question-input');
+    const sendBtn = document.getElementById('send-btn');
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const sidebar = document.getElementById('sidebar');
+
+    // Ensure assistant prose shows as the styled Executive Summary section
+    function ensureExecutiveSummaryHeading(text) {
+        if (!text || !String(text).trim()) return text || '';
+        const trimmed = String(text).trim();
+        if (/^#{1,4}\s*executive\s+summary\b/i.test(trimmed)) return trimmed;
+        if (/^executive\s+summary\b/i.test(trimmed)) return '### ' + trimmed;
+        return '### Executive Summary\n\n' + trimmed;
+    }
+
+    // One bullet per subquery analysis so each sub-question is summarized
+    function buildExecutiveSummaryMarkdown(text, allResults) {
+        if (text && String(text).trim()) {
+            return ensureExecutiveSummaryHeading(String(text).trim());
+        }
+        if (allResults && allResults.length > 0) {
+            const bullets = allResults.map((r, i) => {
+                const label = (r && r.label) || `Query ${i + 1}`;
+                const analysis = ((r && r.analysis) || '').trim();
+                if (analysis) return `- **${label}**: ${analysis}`;
+                const rowN = (r && r.rows && r.rows.length) || r.row_count || 0;
+                return `- **${label}**: Returned ${rowN} row${rowN === 1 ? '' : 's'}.`;
+            });
+            // Single newlines keep one contiguous list under the h3 (styled summary box)
+            return ensureExecutiveSummaryHeading(bullets.join('\n'));
+        }
+        return '';
+    }
+
+    function buildExecutiveSummaryHTML(summaryMd) {
+        if (!summaryMd) return '';
+        let bodyMd = summaryMd;
+        let headingHtml = '<h3>Executive Summary</h3>';
+        if (summaryMd.startsWith('### ')) {
+            const idx = summaryMd.indexOf('\n');
+            if (idx !== -1) {
+                const headingText = summaryMd.substring(4, idx).trim();
+                headingHtml = `<h3>${headingText}</h3>`;
+                bodyMd = summaryMd.substring(idx).trim();
+            } else {
+                headingHtml = `<h3>${summaryMd.substring(4).trim()}</h3>`;
+                bodyMd = '';
+            }
+        }
+        return `
+            <div class="message-text executive-summary">
+                ${headingHtml}
+                <div class="executive-summary-card">
+                    ${renderMarkdown(bodyMd)}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderResultSection(res, idx, fallbackChartUrl) {
+        if (!res) return '';
+        const sectionLabel = res.label || `Result Set ${idx + 1}`;
+        const sectionChartUrl = res.chart_url || fallbackChartUrl || '';
+        const sectionRows = res.rows || [];
+        
+        let html = `<div class="multi-result-section">`;
+
+        if (res.status === 'blocked') {
+            html += `<div class="multi-result-header security-warning">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                ${escapeHtml(sectionLabel)} — Safety Block
+            </div>`;
+            if (res.analysis && res.analysis.trim()) {
+                html += `<div class="block-analysis-text security-message">${renderMarkdown(res.analysis.trim())}</div>`;
+            }
+            if (res.sql) {
+                html += `
+                <details class="sql-details">
+                    <summary>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+                        </svg>
+                        View SQL
+                    </summary>
+                    <pre class="sql-code">${escapeHtml(res.sql)}</pre>
+                </details>`;
+            }
+            html += `</div>`;
+            return html;
+        }
+
+        if (sectionRows.length === 0) return '';
+        html += `<div class="multi-result-header">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+            ${escapeHtml(sectionLabel)} — ${sectionRows.length} row${sectionRows.length !== 1 ? 's' : ''}
+        </div>`;
+
+        if (sectionChartUrl && sectionRows.length > 0) {
+            html += `
+            <div class="data-side-by-side">
+                <div class="data-side-left">${buildDataTable(sectionRows)}</div>
+                <div class="data-side-right">
+                    <div class="message-chart">
+                        <img src="${sectionChartUrl}" alt="${escapeHtml(sectionLabel)} chart" loading="lazy">
+                    </div>
+                </div>
+            </div>`;
+        } else if (sectionChartUrl) {
+            html += `<div class="message-chart solo-chart"><img src="${sectionChartUrl}" alt="${escapeHtml(sectionLabel)} chart" loading="lazy"></div>`;
+        } else {
+            html += buildDataTable(sectionRows);
+        }
+
+        if (res.analysis && res.analysis.trim()) {
+            html += `<div class="block-analysis-text">${renderMarkdown(res.analysis.trim())}</div>`;
+        }
+
+        if (res.sql) {
+            html += `
+            <details class="sql-details">
+                <summary>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+                    </svg>
+                    View SQL
+                </summary>
+                <pre class="sql-code">${escapeHtml(res.sql)}</pre>
+            </details>`;
+        }
+        html += `</div>`;
+        return html;
+    }
+
+    // Lightweight inline markdown renderer (no CDN needed)
+    function renderMarkdown(text) {
+        if (!text) return '';
+
+        // Normalize line endings
+        let md = text.replace(/\r\n/g, '\n');
+
+        // Process code blocks first (```...```)
+        md = md.replace(/```(\w*)\n([\s\S]*?)```/g, function (_, lang, code) {
+            return '<pre class="md-code-block"><code>' + escapeHtml(code.trim()) + '</code></pre>';
+        });
+
+        // Split into lines for block-level processing
+        const lines = md.split('\n');
+        let html = '';
+        let inList = false;
+        let listType = '';  // 'ol' or 'ul'
+        let inTable = false;
+        let tableRows = [];
+
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i];
+
+            // Check if this is a markdown table separator (|---|---|)
+            if (/^\s*\|[\s\-:|]+\|\s*$/.test(line)) {
+                continue; // Skip separator rows
+            }
+
+            // Check if this is a table row (|...|...|)
+            if (/^\s*\|(.+)\|\s*$/.test(line)) {
+                if (!inTable) {
+                    // Close any open list
+                    if (inList) { html += '</' + listType + '>'; inList = false; }
+                    inTable = true;
+                    tableRows = [];
+                }
+                const cells = line.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+                tableRows.push(cells);
+
+                // Check if next line is NOT a table row
+                const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
+                const nextIsTable = /^\s*\|/.test(nextLine);
+                if (!nextIsTable) {
+                    // Render table
+                    html += '<table>';
+                    tableRows.forEach((row, idx) => {
+                        html += '<tr>';
+                        const tag = idx === 0 ? 'th' : 'td';
+                        row.forEach(cell => {
+                            html += '<' + tag + '>' + inlineFormat(cell) + '</' + tag + '>';
+                        });
+                        html += '</tr>';
+                    });
+                    html += '</table>';
+                    inTable = false;
+                    tableRows = [];
+                }
+                continue;
+            }
+
+            // Pre-formatted code block (already processed above as HTML)
+            if (line.startsWith('<pre')) {
+                if (inList) { html += '</' + listType + '>'; inList = false; }
+                // Collect until </pre>
+                let block = line;
+                while (i < lines.length - 1 && !block.includes('</pre>')) {
+                    i++;
+                    block += '\n' + lines[i];
+                }
+                html += block;
+                continue;
+            }
+
+            // Headers
+            const headerMatch = line.match(/^(#{1,4})\s+(.+)$/);
+            if (headerMatch) {
+                if (inList) { html += '</' + listType + '>'; inList = false; }
+                const level = headerMatch[1].length;
+                html += '<h' + level + '>' + inlineFormat(headerMatch[2]) + '</h' + level + '>';
+                continue;
+            }
+
+            // Ordered list item (1. xxx, 2. xxx)
+            const olMatch = line.match(/^\s*\d+[\.\)]\s+(.+)$/);
+            if (olMatch) {
+                if (!inList || listType !== 'ol') {
+                    if (inList) html += '</' + listType + '>';
+                    html += '<ol>';
+                    inList = true;
+                    listType = 'ol';
+                }
+                html += '<li>' + inlineFormat(olMatch[1]) + '</li>';
+                continue;
+            }
+
+            // Unordered list item (- xxx, * xxx)
+            const ulMatch = line.match(/^\s*[\-\*•]\s+(.+)$/);
+            if (ulMatch) {
+                if (!inList || listType !== 'ul') {
+                    if (inList) html += '</' + listType + '>';
+                    html += '<ul>';
+                    inList = true;
+                    listType = 'ul';
+                }
+                html += '<li>' + inlineFormat(ulMatch[1]) + '</li>';
+                continue;
+            }
+
+            // Close list if we hit a non-list line
+            if (inList && line.trim() === '') {
+                html += '</' + listType + '>';
+                inList = false;
+                continue;
+            }
+
+            // Regular paragraph
+            if (line.trim()) {
+                if (inList) { html += '</' + listType + '>'; inList = false; }
+                html += '<p>' + inlineFormat(line) + '</p>';
+            }
+        }
+
+        if (inList) html += '</' + listType + '>';
+
+        return html;
+    }
+
+    // Inline formatting: **bold**, *italic*, `code`, links
+    function inlineFormat(text) {
+        let s = escapeHtml(text);
+        // Bold: **text**
+        s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        // Italic: *text*
+        s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
+        // Inline code: `code`
+        s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+        // Currency formatting with ₹
+        s = s.replace(/₹\s*([\d,]+\.?\d*)/g, '<strong>₹$1</strong>');
+        return s;
+    }
+
+    // Auto-resize textarea
+    input.addEventListener('input', function () {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+    });
+
+    // Enter to send (Shift+Enter for newline)
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            form.dispatchEvent(new Event('submit'));
+        }
+    });
+
+    // Sidebar toggle
+    sidebarToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('sidebar-open');
+    });
+
+    // Suggestion chips
+    function askSuggestion(btn) {
+        const text = btn.textContent.trim().replace(/^[^\w]+/, '').trim();
+        input.value = text;
+        form.dispatchEvent(new Event('submit'));
+    }
+
+    // Scroll to bottom
+    function scrollToBottom() {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // Build a beautiful HTML data table from row objects
+    function buildDataTable(rows, maxRows) {
+        if (!rows || rows.length === 0) return '';
+        const limit = maxRows || 50;
+        const cols = Object.keys(rows[0]);
+        const previewRows = rows.slice(0, limit);
+
+        let html = '<div class="data-table-container">';
+        html += '<div class="table-wrapper"><table class="data-table"><thead><tr>';
+        cols.forEach(c => { html += `<th>${escapeHtml(c.replace(/_/g, ' '))}</th>`; });
+        html += '</tr></thead><tbody>';
+        previewRows.forEach(row => {
+            html += '<tr>';
+            cols.forEach(c => { html += `<td>${inlineFormat(String(row[c] ?? ''))}</td>`; });
+            html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+        if (rows.length > limit) {
+            html += `<div class="table-truncated">Showing ${limit} of ${rows.length} rows</div>`;
+        }
+        html += '</div>';
+        return html;
+    }
+
+    // Add message to UI
+    function addMessage(role, text, chartUrl, sql, executionMs, rows, rowCount, allResults) {
+        if (welcomeScreen) welcomeScreen.remove();
+
+        const div = document.createElement('div');
+        div.className = `message message-${role} message-enter`;
+
+        const avatarHTML = role === 'user'
+            ? '<div class="avatar avatar-user">U</div>'
+            : `<div class="avatar avatar-ai">
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+               <rect x="3" y="3" width="18" height="18" rx="4" stroke="currentColor" stroke-width="2"/>
+               <path d="M8 12h8M12 8v8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+             </svg>
+           </div>`;
+
+        let tables = [];
+        let resultsHTML = '';
+        let summaryHTML = '';
+
+        if (role === 'assistant') {
+            const hasStructured = allResults && allResults.length > 0;
+            if (hasStructured) {
+                for (let idx = 0; idx < allResults.length; idx++) {
+                    resultsHTML += renderResultSection(allResults[idx], idx, (allResults.length === 1 && idx === 0) ? chartUrl : '');
+                }
+            } else {
+                const fallbackRes = extractMarkdownTables(text || '');
+                tables = fallbackRes.tables;
+                const placeholderRes = replaceMarkdownTablesWithPlaceholders(text || '', null);
+                let processedText = renderMarkdown(placeholderRes.text)
+                    .replace(/<p>\s*__RICH_TABLE_PLACEHOLDER_(\d+)__\s*<\/p>/g, '<div class="rich-table-placeholder" data-index="$1"></div>')
+                    .replace(/__RICH_TABLE_PLACEHOLDER_(\d+)__/g, '<div class="rich-table-placeholder" data-index="$1"></div>');
+                resultsHTML = `<div class="message-text">${processedText}</div>`;
+            }
+
+            const summaryMd = buildExecutiveSummaryMarkdown(text, allResults);
+            if (summaryMd) {
+                summaryHTML = buildExecutiveSummaryHTML(summaryMd);
+            }
+        } else {
+            resultsHTML = `<div class="message-text">${escapeHtml(text)}</div>`;
+        }
+
+        const totalRows = (allResults && allResults.length > 0)
+            ? allResults.reduce((sum, r) => sum + (r.row_count || (r.rows && r.rows.length) || 0), 0)
+            : (rowCount || (tables ? tables.reduce((sum, t) => sum + t.rowCount, 0) : 0));
+
+        let metaHTML = '';
+        if (role === 'assistant' && (totalRows || executionMs)) {
+            metaHTML += '<div class="response-meta">';
+            if (totalRows) {
+                metaHTML += `<span class="meta-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg> ${totalRows} row${totalRows !== 1 ? 's' : ''}</span>`;
+            }
+            if (executionMs) {
+                metaHTML += `<span class="meta-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${(executionMs / 1000).toFixed(1)}s</span>`;
+            }
+            metaHTML += `<button class="meta-badge btn-pdf-export" onclick="exportToPDF(this)" title="Export Report to PDF"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Export PDF</button>`;
+            metaHTML += '</div>';
+        }
+
+        let sqlHTML = '';
+        if (sql && role === 'assistant' && (!allResults || allResults.length <= 1)) {
+            sqlHTML += `
+            <details class="sql-details">
+                <summary>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+                    </svg>
+                    View SQL
+                </summary>
+                <pre class="sql-code">${escapeHtml(sql)}</pre>
+            </details>`;
+        }
+
+        // Results/tables/charts first, executive summary LAST
+        div.innerHTML = `
+        <div class="message-avatar">${avatarHTML}</div>
+        <div class="message-content">
+            <div class="unmatched-results-container">${resultsHTML}</div>
+            ${summaryHTML}
+            ${sqlHTML}
+            ${metaHTML}
+        </div>
+    `;
+
+        if (role === 'assistant' && (!allResults || allResults.length === 0) && tables && tables.length > 0) {
+            const placeholders = div.querySelectorAll('.rich-table-placeholder');
+            placeholders.forEach(placeholder => {
+                const idx = parseInt(placeholder.getAttribute('data-index'));
+                if (!tables[idx]) return;
+                const t = tables[idx];
+                let html = `<div class="multi-result-section">`;
+                if (idx === 0 && chartUrl) {
+                    html += `
+                    <div class="data-side-by-side">
+                        <div class="data-side-left">
+                            <div class="side-by-side-header">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/>
+                                </svg>
+                                Results — ${t.rowCount} row${t.rowCount !== 1 ? 's' : ''}
+                            </div>
+                            ${t.tableHtml}
+                        </div>
+                        <div class="data-side-right">
+                            <div class="message-chart">
+                                <img src="${chartUrl}" alt="Chart visualization" loading="lazy">
+                            </div>
+                        </div>
+                    </div>`;
+                } else {
+                    html += `
+                    <details class="sql-details" open>
+                        <summary>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/>
+                            </svg>
+                            Results ${idx > 0 ? idx + 1 : ''} — ${t.rowCount} row${t.rowCount !== 1 ? 's' : ''}
+                        </summary>
+                        ${t.tableHtml}
+                    </details>`;
+                }
+                html += `</div>`;
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                while (tempDiv.firstChild) {
+                    placeholder.parentNode.insertBefore(tempDiv.firstChild, placeholder);
+                }
+                placeholder.parentNode.removeChild(placeholder);
+            });
+        }
+
+        messagesInner.appendChild(div);
+        requestAnimationFrame(() => {
+            div.classList.remove('message-enter');
+            scrollToBottom();
+        });
+    }
+
+
+    // Loading indicator
+    function showLoading() {
+        const div = document.createElement('div');
+        div.className = 'message message-assistant message-enter';
+        div.id = 'loading-msg';
+        div.innerHTML = `
+        <div class="message-avatar">
+            <div class="avatar avatar-ai">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <rect x="3" y="3" width="18" height="18" rx="4" stroke="currentColor" stroke-width="2"/>
+                    <path d="M8 12h8M12 8v8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+        </div>
+        <div class="message-content">
+            <div class="loading-dots">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+    `;
+        messagesInner.appendChild(div);
+        requestAnimationFrame(() => {
+            div.classList.remove('message-enter');
+            scrollToBottom();
+        });
+    }
+
+    function hideLoading() {
+        const el = document.getElementById('loading-msg');
+        if (el) el.remove();
+    }
+
+    // Replace markdown tables with placeholders matched to allResults by column-header similarity.
+    // Uses greedy best-match with deduplication so each allResults entry is used at most once.
+    // Also inserts placeholders for results the LLM rendered as prose (no markdown table).
+    function replaceMarkdownTablesWithPlaceholders(text, allResults) {
+        if (!text) return { text: '', tableCount: 0 };
+
+        const lines = text.split('\n');
+
+        // ── Pass 1: Identify all markdown tables and their header columns ──
+        let tableInfos = []; // [{ startLine, endLine, headerCols }]
+        let inTable = false;
+        let currentTableStart = -1;
+        let currentTableHeaders = null;
+
+        for (let i = 0; i < lines.length; i++) {
+            const trimmed = lines[i].trim();
+            const isTableLine = trimmed.startsWith('|') && trimmed.endsWith('|') && trimmed.includes('|');
+
+            if (isTableLine) {
+                if (!inTable) {
+                    inTable = true;
+                    currentTableStart = i;
+                    currentTableHeaders = trimmed.replace(/^\||\|$/g, '').split('|').map(s => s.trim());
+                }
+            } else {
+                if (inTable) {
+                    inTable = false;
+                    tableInfos.push({ startLine: currentTableStart, endLine: i - 1, headerCols: currentTableHeaders });
+                }
+            }
+        }
+        if (inTable) {
+            tableInfos.push({ startLine: currentTableStart, endLine: lines.length - 1, headerCols: currentTableHeaders });
+        }
+
+        // ── Pass 1.5: Identify all headings ──
+        let headings = [];
+        for (let i = 0; i < lines.length; i++) {
+            const hMatch = lines[i].match(/^(#{1,4})\s+(.+)$/);
+            if (hMatch) {
+                headings.push({ lineIdx: i, text: hMatch[2], level: hMatch[1].length });
+            }
+        }
+
+        // ── Pass 2: Greedy match tables → allResults by column-name similarity ──
+        let tableToResultIdx = new Array(tableInfos.length).fill(-1);
+
+        if (allResults && allResults.length > 0 && tableInfos.length > 0) {
+            let scores = [];
+            for (let ti = 0; ti < tableInfos.length; ti++) {
+                const normHeaders = tableInfos[ti].headerCols
+                    .map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''))
+                    .filter(h => h.length > 0);
+                if (normHeaders.length === 0) continue;
+
+                for (let ri = 0; ri < allResults.length; ri++) {
+                    const res = allResults[ri];
+                    if (!res.rows || res.rows.length === 0) continue;
+
+                    const resKeys = Object.keys(res.rows[0])
+                        .map(k => k.toLowerCase().replace(/[^a-z0-9]/g, ''));
+
+                    let matches = 0;
+                    normHeaders.forEach(h => { if (resKeys.some(k => k === h || k.includes(h) || h.includes(k))) matches++; });
+                    resKeys.forEach(k => { if (normHeaders.some(h => h === k || h.includes(k) || k.includes(h))) matches++; });
+
+                    const totalKeys = normHeaders.length + resKeys.length;
+                    const score = totalKeys > 0 ? matches / totalKeys : 0;
+
+                    if (score > 0.1) {
+                        scores.push({ tableIdx: ti, resultIdx: ri, score });
+                    }
+                }
+            }
+
+            scores.sort((a, b) => b.score - a.score);
+            const usedTables = new Set();
+            const usedResults = new Set();
+
+            for (const { tableIdx, resultIdx } of scores) {
+                if (usedTables.has(tableIdx) || usedResults.has(resultIdx)) continue;
+                tableToResultIdx[tableIdx] = resultIdx;
+                usedTables.add(tableIdx);
+                usedResults.add(resultIdx);
+            }
+        }
+
+        // ── Pass 2.5: Attach unmatched results to headings that have no table ──
+        // This handles results the LLM described in prose (no markdown table generated).
+        let headingInsertions = {}; // lineIdx → resultIdx to insert after
+
+        if (allResults && allResults.length > 0) {
+            const matchedResults = new Set(tableToResultIdx.filter(i => i !== -1));
+            const unmatchedResults = [];
+            for (let ri = 0; ri < allResults.length; ri++) {
+                if (!matchedResults.has(ri) && allResults[ri].rows && allResults[ri].rows.length > 0) {
+                    unmatchedResults.push(ri);
+                }
+            }
+
+            if (unmatchedResults.length > 0 && headings.length > 0) {
+                // Determine which headings already have a table in their section
+                let headingHasTable = new Array(headings.length).fill(false);
+                for (let ti = 0; ti < tableInfos.length; ti++) {
+                    for (let hi = headings.length - 1; hi >= 0; hi--) {
+                        if (headings[hi].lineIdx < tableInfos[ti].startLine) {
+                            headingHasTable[hi] = true;
+                            break;
+                        }
+                    }
+                }
+
+                // Find orphan headings (no table) that aren't summary/conclusion
+                const orphanHeadings = headings
+                    .map((h, i) => ({ ...h, idx: i }))
+                    .filter((h, i) => !headingHasTable[i])
+                    .filter(h => !/summary|conclusion|overview/i.test(h.text));
+
+                // Score orphan headings against unmatched results using keyword overlap
+                let hScores = [];
+                for (const heading of orphanHeadings) {
+                    const hWords = heading.text.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2);
+
+                    for (const ri of unmatchedResults) {
+                        const res = allResults[ri];
+                        const labelWords = (res.label || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length > 2);
+                        const colWords = Object.keys(res.rows[0] || {}).flatMap(k => k.toLowerCase().split('_')).filter(w => w.length > 2);
+                        const resultWords = [...new Set([...labelWords, ...colWords])];
+
+                        let matches = 0;
+                        hWords.forEach(hw => { if (resultWords.some(rw => rw.includes(hw) || hw.includes(rw))) matches++; });
+                        resultWords.forEach(rw => { if (hWords.some(hw => hw.includes(rw) || rw.includes(hw))) matches++; });
+
+                        const total = hWords.length + resultWords.length;
+                        const score = total > 0 ? matches / total : 0;
+                        if (score > 0) hScores.push({ headingIdx: heading.idx, resultIdx: ri, score });
+                    }
+                }
+
+                // Greedy assign, then fall back to positional for anything still unmatched
+                hScores.sort((a, b) => b.score - a.score);
+                const usedH = new Set();
+                const usedR = new Set();
+                for (const { headingIdx, resultIdx } of hScores) {
+                    if (usedH.has(headingIdx) || usedR.has(resultIdx)) continue;
+                    usedH.add(headingIdx);
+                    usedR.add(resultIdx);
+
+                    // Find insertion point: last non-empty line of heading section
+                    const headingLine = headings[headingIdx].lineIdx;
+                    let sectionEnd = lines.length;
+                    for (let nhi = headingIdx + 1; nhi < headings.length; nhi++) {
+                        sectionEnd = headings[nhi].lineIdx;
+                        break;
+                    }
+                    // Also stop before any table that starts in this section range
+                    for (const ti of tableInfos) {
+                        if (ti.startLine > headingLine && ti.startLine < sectionEnd) {
+                            sectionEnd = Math.min(sectionEnd, ti.startLine);
+                        }
+                    }
+                    let insertAfter = headingLine;
+                    for (let li = headingLine + 1; li < sectionEnd; li++) {
+                        if (lines[li].trim() !== '') insertAfter = li;
+                    }
+                    headingInsertions[insertAfter] = resultIdx;
+                }
+
+                // Positional fallback: assign remaining unmatched to remaining orphans
+                const stillUnmatched = unmatchedResults.filter(ri => !usedR.has(ri));
+                const stillOrphan = orphanHeadings.filter(h => !usedH.has(h.idx));
+                for (let i = 0; i < Math.min(stillUnmatched.length, stillOrphan.length); i++) {
+                    const heading = stillOrphan[i];
+                    const headingLine = headings[heading.idx].lineIdx;
+                    let sectionEnd = lines.length;
+                    for (let nhi = heading.idx + 1; nhi < headings.length; nhi++) {
+                        sectionEnd = headings[nhi].lineIdx;
+                        break;
+                    }
+                    let insertAfter = headingLine;
+                    for (let li = headingLine + 1; li < sectionEnd; li++) {
+                        if (lines[li].trim() !== '') insertAfter = li;
+                    }
+                    headingInsertions[insertAfter] = stillUnmatched[i];
+                }
+            }
+        }
+
+        // ── Pass 3: Rebuild text with all placeholders ──
+        let outputLines = [];
+        inTable = false;
+        let tableCounter = 0;
+
+        for (let i = 0; i < lines.length; i++) {
+            const trimmed = lines[i].trim();
+            const isTableLine = trimmed.startsWith('|') && trimmed.endsWith('|') && trimmed.includes('|');
+
+            if (isTableLine) {
+                if (!inTable) inTable = true;
+                // Skip table lines (replaced by rich table)
+            } else {
+                if (inTable) {
+                    inTable = false;
+                    const resultIdx = tableToResultIdx[tableCounter];
+                    const placeholderIdx = resultIdx !== -1 ? resultIdx : tableCounter;
+                    outputLines.push(`__RICH_TABLE_PLACEHOLDER_${placeholderIdx}__`);
+                    tableCounter++;
+                }
+                outputLines.push(lines[i]);
+            }
+
+            // Insert placeholder for an unmatched result after this line
+            if (headingInsertions.hasOwnProperty(i)) {
+                outputLines.push(`__RICH_TABLE_PLACEHOLDER_${headingInsertions[i]}__`);
+            }
+        }
+        if (inTable) {
+            const resultIdx = tableToResultIdx[tableCounter];
+            const placeholderIdx = resultIdx !== -1 ? resultIdx : tableCounter;
+            outputLines.push(`__RICH_TABLE_PLACEHOLDER_${placeholderIdx}__`);
+            tableCounter++;
+        }
+
+        return {
+            text: outputLines.join('\n').replace(/\n{3,}/g, '\n\n').trim(),
+            tableCount: tableCounter
+        };
+    }
+
+    // Remove markdown tables from assistant prose so we don't duplicate
+    // the structured results table rendered from `rows`.
+    function stripMarkdownTables(text) {
+        if (!text) return '';
+        return text
+            .split('\n')
+            .filter(line => !/^\s*\|.*\|\s*$/.test(line))  // drop table + separator rows
+            .join('\n')
+            .replace(/\n{3,}/g, '\n\n')                    // collapse blank gaps left behind
+            .trim();
+    }
+
+    // Extract multiple markdown tables from raw text
+    function extractMarkdownTables(text) {
+        if (!text) return { cleanText: '', tables: [] };
+
+        const lines = text.split('\n');
+        let tables = [];
+        let cleanLines = [];
+        let currentTable = null;
+
+        for (let line of lines) {
+            const trimmed = line.trim();
+            const isTableLine = trimmed.startsWith('|') && trimmed.endsWith('|') && trimmed.includes('|');
+
+            if (isTableLine) {
+                if (!currentTable) {
+                    currentTable = [];
+                }
+                currentTable.push(line);
+            } else {
+                if (currentTable) {
+                    tables.push(currentTable);
+                    currentTable = null;
+                }
+                cleanLines.push(line);
+            }
+        }
+        if (currentTable) {
+            tables.push(currentTable);
+        }
+
+        const cleanText = cleanLines.join('\n').trim();
+
+        const parsedTables = tables.map(tableLines => {
+            if (tableLines.length < 3) return null;
+            const headerCols = tableLines[0].split('|').map(s => s.trim()).filter((s, idx, arr) => idx > 0 && idx < arr.length - 1);
+
+            let rowsHtml = '';
+            let rowCount = 0;
+            for (let i = 2; i < tableLines.length; i++) {
+                const cols = tableLines[i].split('|').map(s => s.trim()).filter((s, idx, arr) => idx > 0 && idx < arr.length - 1);
+                if (cols.length > 0) {
+                    rowsHtml += `<tr>${cols.map(c => `<td>${inlineFormat(c)}</td>`).join('')}</tr>`;
+                    rowCount++;
+                }
+            }
+
+            const tableHtml = `
+            <div class="data-table-container">
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                ${headerCols.map(h => `<th>${escapeHtml(h.replace(/_/g, ' '))}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+            return { tableHtml, rowCount };
+        }).filter(t => t !== null);
+
+        return { cleanText, tables: parsedTables };
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Form submit
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const question = input.value.trim();
+        if (!question) return;
+
+        // Add user message
+        addMessage('user', question);
+        input.value = '';
+        input.style.height = 'auto';
+        sendBtn.disabled = true;
+        showLoading();
+
+        try {
+            const res = await fetch(ASK_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRF_TOKEN,
+                },
+                body: JSON.stringify({
+                    question: question,
+                    conversation_id: CONVERSATION_ID,
+                }),
+            });
+
+            const data = await res.json();
+            hideLoading();
+
+            if (data.error) {
+                addMessage('assistant', `Error: ${data.error}`);
+            } else {
+                // Backend returns executive_summary + results; keep legacy answer/all_results fallbacks
+                const answerText = data.executive_summary || data.answer || 'No answer returned.';
+                const allResults = Array.isArray(data.results) ? data.results
+                    : (Array.isArray(data.all_results) ? data.all_results : []);
+                const primary = allResults[0] || {};
+                const chartUrl = data.chart_url || primary.chart_url || '';
+                const sql = data.sql || primary.sql || '';
+                const rows = data.rows || primary.rows || [];
+                const rowCount = data.row_count || primary.row_count || (rows && rows.length) || 0;
+                addMessage('assistant', answerText, chartUrl, sql, data.execution_ms, rows, rowCount, allResults);
+            }
+        } catch (err) {
+            hideLoading();
+            addMessage('assistant', `Network error: ${err.message}`);
+        } finally {
+            sendBtn.disabled = false;
+            input.focus();
+        }
+    });
+
+    // On page load: render markdown in existing server-rendered messages
+    document.querySelectorAll('.message-assistant').forEach(msgEl => {
+        const textEl = msgEl.querySelector('.message-text');
+        if (!textEl) return;
+
+        let rawText = textEl.textContent;
+        const chartUrl = msgEl.getAttribute('data-chart-url') || '';
+        const sql = msgEl.getAttribute('data-sql') || '';
+        const executionMs = parseFloat(msgEl.getAttribute('data-execution-ms')) || 0;
+        const dbRowCount = parseInt(msgEl.getAttribute('data-row-count')) || 0;
+
+        // Prefer embedded details_json script; fall back to legacy HTML comment
+        let allResults = [];
+        const resultsScript = msgEl.querySelector('.message-results-data');
+        if (resultsScript && resultsScript.textContent.trim()) {
+            try {
+                allResults = JSON.parse(resultsScript.textContent);
+            } catch (e) {
+                console.error("Failed to parse message-results-data", e);
+            }
+        }
+        const match = rawText.match(/<!-- ALL_RESULTS_JSON: ([\s\S]*?) -->/);
+        if (match && (!allResults || allResults.length === 0)) {
+            try {
+                allResults = JSON.parse(match[1]);
+                rawText = rawText.replace(match[0], '').trim();
+            } catch (e) {
+                console.error("Failed to parse ALL_RESULTS_JSON", e);
+            }
+        } else if (match) {
+            rawText = rawText.replace(match[0], '').trim();
+        }
+
+        // Extract tables from raw text (legacy fallback only)
+        const { cleanText: fallbackCleanText, tables } = extractMarkdownTables(rawText);
+
+        let resultsHTML = '';
+        let summaryHTML = '';
+        const hasStructured = allResults && allResults.length > 0;
+
+        if (hasStructured) {
+            for (let idx = 0; idx < allResults.length; idx++) {
+                resultsHTML += renderResultSection(allResults[idx], idx, (allResults.length === 1 && idx === 0) ? chartUrl : '');
+            }
+        } else {
+            const placeholderRes = replaceMarkdownTablesWithPlaceholders(rawText, allResults);
+            let renderedText = renderMarkdown(placeholderRes.text)
+                .replace(/<p>\s*__RICH_TABLE_PLACEHOLDER_(\d+)__\s*<\/p>/g, '<div class="rich-table-placeholder" data-index="$1"></div>')
+                .replace(/__RICH_TABLE_PLACEHOLDER_(\d+)__/g, '<div class="rich-table-placeholder" data-index="$1"></div>');
+            resultsHTML = `<div class="message-text">${renderedText}</div>`;
+        }
+
+        const summaryMd = buildExecutiveSummaryMarkdown(rawText, allResults);
+        if (summaryMd) {
+            summaryHTML = buildExecutiveSummaryHTML(summaryMd);
+        }
+
+        let totalRows = dbRowCount;
+        if (allResults && allResults.length > 0) {
+            totalRows = allResults.reduce((sum, r) => sum + (r.row_count || (r.rows && r.rows.length) || 0), 0);
+        } else if (tables && tables.length > 0) {
+            totalRows = tables.reduce((sum, t) => sum + t.rowCount, 0);
+        }
+
+        let metaHTML = '';
+        if (totalRows || executionMs) {
+            metaHTML += '<div class="response-meta">';
+            if (totalRows) {
+                metaHTML += `<span class="meta-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg> ${totalRows} row${totalRows !== 1 ? 's' : ''}</span>`;
+            }
+            if (executionMs) {
+                metaHTML += `<span class="meta-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${(executionMs / 1000).toFixed(1)}s</span>`;
+            }
+            metaHTML += `<button class="meta-badge btn-pdf-export" onclick="exportToPDF(this)" title="Export Report to PDF"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Export PDF</button>`;
+            metaHTML += '</div>';
+        }
+
+        let sqlHTML = '';
+        if (sql && (!allResults || allResults.length <= 1)) {
+            sqlHTML += `
+            <details class="sql-details">
+                <summary>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+                    </svg>
+                    View SQL
+                </summary>
+                <pre class="sql-code">${escapeHtml(sql)}</pre>
+            </details>`;
+        }
+
+        const contentEl = msgEl.querySelector('.message-content');
+        if (contentEl) {
+            // Results first, executive summary at the bottom
+            contentEl.innerHTML = `
+            <div class="unmatched-results-container">${resultsHTML}</div>
+            ${summaryHTML}
+            ${sqlHTML}
+            ${metaHTML}
+        `;
+
+            if (!hasStructured && tables && tables.length > 0) {
+                const placeholders = contentEl.querySelectorAll('.rich-table-placeholder');
+                placeholders.forEach(placeholder => {
+                    const tidx = parseInt(placeholder.getAttribute('data-index'));
+                    if (!tables[tidx]) return;
+                    const t = tables[tidx];
+                    let html = `<div class="multi-result-section">`;
+                    if (tidx === 0 && chartUrl) {
+                        html += `
+                        <div class="data-side-by-side">
+                            <div class="data-side-left">
+                                <div class="side-by-side-header">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/>
+                                    </svg>
+                                    Results — ${t.rowCount} row${t.rowCount !== 1 ? 's' : ''}
+                                </div>
+                                ${t.tableHtml}
+                            </div>
+                            <div class="data-side-right">
+                                <div class="message-chart">
+                                    <img src="${chartUrl}" alt="Chart visualization" loading="lazy">
+                                </div>
+                            </div>
+                        </div>`;
+                    } else {
+                        html += `
+                        <details class="sql-details" open>
+                            <summary>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/>
+                                </svg>
+                                Results ${tidx > 0 ? tidx + 1 : ''} — ${t.rowCount} row${t.rowCount !== 1 ? 's' : ''}
+                            </summary>
+                            ${t.tableHtml}
+                        </details>`;
+                    }
+                    html += `</div>`;
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = html;
+                    while (tempDiv.firstChild) {
+                        placeholder.parentNode.insertBefore(tempDiv.firstChild, placeholder);
+                    }
+                    placeholder.parentNode.removeChild(placeholder);
+                });
+            } else if (!hasStructured && chartUrl) {
+                const unmatchedContainer = contentEl.querySelector('.unmatched-results-container');
+                if (unmatchedContainer) {
+                    unmatchedContainer.insertAdjacentHTML('beforeend', `<div class="message-chart solo-chart"><img src="${chartUrl}" alt="Chart visualization" loading="lazy"></div>`);
+                }
+            }
+        }
+
+    });
+
+    // Initial scroll
+    scrollToBottom();
+
+    // PDF Export Function
+    function exportToPDF(btn) {
+        const messageEl = btn.closest('.message');
+        if (!messageEl) return;
+
+        // 1. Find the question text
+        let questionText = "AskDB Query Report";
+        let prevEl = messageEl.previousElementSibling;
+        while (prevEl) {
+            if (prevEl.classList.contains('message-user')) {
+                const txtEl = prevEl.querySelector('.message-text');
+                if (txtEl) {
+                    questionText = txtEl.innerText;
+                }
+                break;
+            }
+            prevEl = prevEl.previousElementSibling;
+        }
+
+        // 2. Executive summary is rendered at the bottom in .executive-summary
+        let answerHtml = "";
+        let summaryHtml = "";
+        const summaryEl = messageEl.querySelector('.executive-summary');
+        if (summaryEl) {
+            const clone = summaryEl.cloneNode(true);
+            const heading = clone.querySelector('h1, h2, h3, h4, h5, h6');
+            if (heading) heading.remove();
+            summaryHtml = clone.innerHTML;
+        }
+        // Prefer structured result sections for the analysis detail in the PDF
+        const resultsContainer = messageEl.querySelector('.unmatched-results-container');
+        if (resultsContainer) {
+            answerHtml = resultsContainer.innerHTML;
+        }
+
+        // 3. Find the table (only if not already embedded inline in answerHtml)
+        const hasInlineTables = answerHtml.includes('data-table') || answerHtml.includes('table-wrapper') || answerHtml.includes('rich-table-placeholder');
+        const tableContainer = messageEl.querySelector('.data-table-container');
+        let tableHtml = "";
+        if (tableContainer && !hasInlineTables) {
+            tableHtml = tableContainer.innerHTML;
+        }
+
+        // 4. Find the chart (only if not already embedded inline in answerHtml)
+        const hasInlineCharts = answerHtml.includes('message-chart') || answerHtml.includes('chart-container');
+        const chartImg = messageEl.querySelector('.message-chart img');
+        let chartSrc = "";
+        if (chartImg && !hasInlineCharts) {
+            chartSrc = chartImg.src;
+        }
+
+        // 5. Open new window to render print template
+        const reportWindow = window.open('', '_blank');
+        if (!reportWindow) {
+            alert("Please allow popups to export the PDF report.");
+            return;
+        }
+
+        const timestamp = new Date().toLocaleString();
+
+        const reportHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AskDB Analytical Report - ${escapeHtmlForDoc(questionText.substring(0, 30))}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #1e293b;
+            background-color: #ffffff;
+            margin: 0;
+            padding: 40px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #6366f1;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-weight: 700;
+            font-size: 22px;
+            color: #6366f1;
+            letter-spacing: -0.5px;
+        }
+        .meta {
+            font-size: 12px;
+            color: #64748b;
+            text-align: right;
+        }
+        .report-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+            color: #0f172a;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #334155;
+            margin-top: 30px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 6px;
+        }
+        .question-box {
+            background-color: #f8fafc;
+            border-left: 4px solid #6366f1;
+            padding: 16px;
+            margin-bottom: 25px;
+            border-radius: 4px;
+        }
+        .question-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #6366f1;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+        .question-text {
+            font-size: 16px;
+            font-weight: 500;
+            color: #1e293b;
+            margin: 0;
+        }
+        .summary-box {
+            background: linear-gradient(135deg, #f5f3ff 0%, #edd8ff 100%);
+            border-left: 4px solid #8b5cf6;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 6px;
+        }
+        .summary-title {
+            font-weight: 700;
+            color: #5b21b6;
+            margin: 0 0 12px 0;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .summary-box ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .summary-box li {
+            margin-bottom: 8px;
+            color: #4c1d95;
+        }
+        .answer-prose {
+            color: #334155;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+        .chart-container {
+            text-align: center;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background-color: #0f172a;
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+        .chart-img {
+            max-width: 100%;
+            height: auto;
+            max-height: 420px;
+            border-radius: 6px;
+        }
+        .table-container {
+            width: 100%;
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+        .table-truncated {
+            display: none;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th {
+            background-color: #f8fafc;
+            color: #475569;
+            font-weight: 600;
+            text-align: left;
+            padding: 10px 12px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #334155;
+        }
+        tr:nth-child(even) td {
+            background-color: #f8fafc;
+        }
+        .footer {
+            margin-top: 60px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 15px;
+            font-size: 11px;
+            color: #94a3b8;
+            text-align: center;
+        }
+        @media print {
+            body {
+                padding: 0;
+            }
+            .no-print-btn {
+                display: none;
+            }
+        }
+        .print-btn-bar {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: flex-end;
+        }
+        .print-btn {
+            background-color: #6366f1;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.2);
+            transition: all 0.2s;
+        }
+        .print-btn:hover {
+            background-color: #4f46e5;
+            box-shadow: 0 4px 12px -1px rgba(99, 102, 241, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="print-btn-bar no-print-btn">
+        <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+    </div>
+
+    <div class="header">
+        <div class="logo">AskDB // Analytical Report</div>
+        <div class="meta">
+            <div>Date: ${timestamp}</div>
+            <div>Source: sales_db</div>
+        </div>
+    </div>
+
+    <div class="question-box">
+        <div class="question-label">Question Asked</div>
+        <h2 class="question-text">${escapeHtmlForDoc(questionText)}</h2>
+    </div>
+
+    ${summaryHtml ? `
+    <div class="summary-box">
+        <h3 class="summary-title">📝 Executive Summary</h3>
+        ${summaryHtml}
+    </div>
+    ` : ''}
+
+    ${answerHtml ? `
+    <div class="section-title">Analysis Detail</div>
+    <div class="answer-prose">${answerHtml}</div>
+    ` : ''}
+
+    ${chartSrc ? `
+    <div class="section-title">Visual Trend</div>
+    <div class="chart-container">
+        <img class="chart-img" src="${chartSrc}" alt="Chart" />
+    </div>
+    ` : ''}
+
+    ${tableHtml ? `
+    <div class="section-title">Data Table</div>
+    <div class="table-container">${tableHtml}</div>
+    ` : ''}
+
+    <div class="footer">
+        Generated automatically by AskDB • Confidential Internal Report
+    </div>
+
+    <script>
+        const img = document.querySelector('.chart-img');
+        if (img) {
+            if (img.complete) {
+                setTimeout(() => window.print(), 500);
+            } else {
+                img.onload = () => setTimeout(() => window.print(), 500);
+            }
+        } else {
+            setTimeout(() => window.print(), 500);
+        }
+    <\/script>
+</body>
+</html>
+    `;
+
+        reportWindow.document.write(reportHtml);
+        reportWindow.document.close();
+    }
+
+    function escapeHtmlForDoc(text) {
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+</script>
+{% endblock %}

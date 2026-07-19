@@ -1,0 +1,45 @@
+{% extends "chat/base.html" %}
+{% load static %}
+
+{% block title %}AskDB — History{% endblock %}
+
+{% block body %}
+<div class="history-page">
+    <header class="history-header">
+        <a href="{% url 'chat:chat' %}" class="back-link">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Back to Chat
+        </a>
+        <h1>Conversation History</h1>
+    </header>
+
+    <div class="history-list">
+        {% for conv in conversations %}
+        <a href="{% url 'chat:chat_with_id' conv.id %}" class="history-item">
+            <div class="history-item-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                </svg>
+            </div>
+            <div class="history-item-content">
+                <h3>{{ conv.title|truncatechars:60 }}</h3>
+                <p class="history-item-date">{{ conv.created_at|date:"M d, Y — h:i A" }}</p>
+            </div>
+            <svg class="history-item-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+        {% empty %}
+        <div class="history-empty">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+            </svg>
+            <p>No conversations yet. Start chatting!</p>
+            <a href="{% url 'chat:chat' %}" class="btn-primary">Start a conversation</a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
